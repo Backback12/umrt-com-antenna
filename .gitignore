@@ -2,4 +2,8 @@
 /.idea/
 /output-doxygen/
 # We ignore package.xml because it is generated from package.in.xml
-package.xml
+# package.xml
+/build
+/install
+/log
+.vscode

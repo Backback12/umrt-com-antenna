@@ -1,61 +1,60 @@
-cmake_minimum_required(VERSION 3.16)
-project(********** Fill in project name **********)
+cmake_minimum_required(VERSION 3.8)
+project(umrt_com_antenna)
 
-set(CMAKE_CXX_STANDARD 14)
-
-if(CMAKE_CXX_COMPILER_ID MATCHES "(GNU|Clang)")
-  add_compile_options(-Wall -Wextra -fPIC)
+if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
-# Fixes intellisense not finding ros2 headers https://youtrack.jetbrains.com/issue/CPP-29747/Certain-ROS2-package-headers-missing-from-Intellisense-when-using-a-Docker-toolchain
-include_directories(SYSTEM /opt/ros/$ENV{ROS_DISTRO}/include)
+if(NOT CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD 17)
+endif()
 
-# find dependencies
-set(THIS_PACKAGE_INCLUDE_DEPENDS
-        rclcpp
-        rclcpp_lifecycle
-        )
-
-# find dependencies
 find_package(ament_cmake REQUIRED)
-foreach(Dependency IN ITEMS ${THIS_PACKAGE_INCLUDE_DEPENDS})
-  find_package(${Dependency} REQUIRED)
-endforeach()
+find_package(rclcpp REQUIRED)
+find_package(std_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
 
-add_executable(${PROJECT_NAME}
-    src/project_name.cpp
-    src/example_node.cpp
+# libgpiod does not ship a CMake config, so locate it manually.
+# Requires: sudo apt install libgpiod-dev
+find_path(GPIOD_INCLUDE_DIR gpiod.hpp)
+find_library(GPIOD_LIB gpiod)
+find_library(GPIODCXX_LIB gpiodcxx)
+
+if(NOT GPIOD_INCLUDE_DIR OR NOT GPIOD_LIB OR NOT GPIODCXX_LIB)
+  message(FATAL_ERROR "libgpiod (with C++ bindings) not found. Install with: sudo apt install libgpiod-dev")
+endif()
+
+include_directories(include ${GPIOD_INCLUDE_DIR})
+
+# --- Switch publisher node (SW1/SW2 GPIO) ---
+add_executable(switch_publisher_node
+  src/switch_publisher_node.cpp
+  src/switch_publisher_main.cpp
 )
-target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_17)
-target_include_directories(${PROJECT_NAME} PUBLIC
-        $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-        $<INSTALL_INTERFACE:include/${PROJECT_NAME}>
-        )
-ament_target_dependencies(
-        ${PROJECT_NAME} PUBLIC
-        ${THIS_PACKAGE_INCLUDE_DEPENDS}
+ament_target_dependencies(switch_publisher_node rclcpp std_msgs)
+target_link_libraries(switch_publisher_node ${GPIODCXX_LIB} ${GPIOD_LIB})
+
+# --- MPU9265 IMU/Magnetometer node (I2C) ---
+add_executable(mpu9265_node
+  src/mpu9265_node.cpp
+  src/mpu9265_main.cpp
 )
+ament_target_dependencies(mpu9265_node rclcpp std_msgs sensor_msgs)
 
-# Parse version number from the file
-file(READ "version" version_input)
-string(REGEX MATCH "([0-9]+)\.([0-9]+)\.([0-9]+)" _ ${version_input})
-
-# Fill version number into package.xml
-configure_file(
-        package.in.xml
-        ${CMAKE_CURRENT_SOURCE_DIR}/package.xml
-        @ONLY
-)
-
-# INSTALL
 install(TARGETS
-        ${PROJECT_NAME}
-        DESTINATION lib/${PROJECT_NAME}
-        )
-
-install(
-        DIRECTORY launch
-        DESTINATION share/${PROJECT_NAME}/
+  switch_publisher_node
+  mpu9265_node
+  DESTINATION lib/${PROJECT_NAME}
 )
+
+install(DIRECTORY
+  launch
+  DESTINATION share/${PROJECT_NAME}
+)
+
+if(BUILD_TESTING)
+  find_package(ament_lint_auto REQUIRED)
+  ament_lint_auto_find_test_dependencies()
+endif()
 
 ament_package()
