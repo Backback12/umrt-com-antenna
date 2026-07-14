@@ -34,16 +34,16 @@ add_executable(switch_publisher_node
 ament_target_dependencies(switch_publisher_node rclcpp std_msgs)
 target_link_libraries(switch_publisher_node ${GPIODCXX_LIB} ${GPIOD_LIB})
 
-# --- MPU9265 IMU/Magnetometer node (I2C) ---
-add_executable(mpu9265_node
-  src/mpu9265_node.cpp
-  src/mpu9265_main.cpp
+# --- hmc5883l Magnetometer node (I2C) ---
+add_executable(qmc5883p_node
+  src/qmc5883p_node.cpp
+  src/qmc5883p_main.cpp
 )
-ament_target_dependencies(mpu9265_node rclcpp std_msgs sensor_msgs)
+ament_target_dependencies(qmc5883p_node rclcpp std_msgs sensor_msgs)
 
 install(TARGETS
   switch_publisher_node
-  mpu9265_node
+  qmc5883p_node
   DESTINATION lib/${PROJECT_NAME}
 )
 

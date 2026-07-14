@@ -12,8 +12,8 @@ def generate_launch_description():
 
     imu_node = Node(
         package='umrt_com_antenna',
-        executable='mpu9265_node',
-        name='mpu9265_node',
+        executable='qmc5883p_node',
+        name='qmc5883p_node',
         output='screen',
         parameters=[{'i2c_bus': '/dev/i2c-1'}],
     )
